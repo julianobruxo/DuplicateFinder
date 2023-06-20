@@ -70,5 +70,23 @@ func main() {
 			fmt.Println(infoDoArquivo)
 		}
 	}
+	fmt.Println("Deseja excluir os arquivos duplicados? (S/N)")
+	inputConfirma := bufio.NewReader(os.Stdin)
+	respostaConfirma, _ := inputConfirma.ReadString('\n')
+	respostaConfirma = strings.TrimSpace(respostaConfirma)
+	if respostaConfirma != "s" && respostaConfirma != "S" {
+		return
+	}
+
+	for _, arquivos := range arquivosDuplicados {
+		for _, infoDoArquivo := range arquivos {
+			err := os.Remove(infoDoArquivo)
+			if err != nil {
+				fmt.Println("Erro ao excluir o arquivo:", err)
+				continue
+			}
+			fmt.Println("Arquivo excluído:", infoDoArquivo)
+		}
+	}
 
 }
