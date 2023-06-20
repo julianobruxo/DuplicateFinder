@@ -1,38 +1,38 @@
 package main
 
 import (
-	"bufio"         // pacote que recebe Input and Output(io)em Buffer
-	"crypto/md5"    // calcula e cria um hash md5 para o arquivo especificado em diretório
-	"fmt"           // formatação
-	"io"            //pacote que recebe Input and Output(io)
-	"io/fs"         //pacote que estende as operações de entrada/saída (io) para incluir funcionalidades específicas do sistema de arquivos (fs = file system)
-	"os"            // pacote referente ao operational system
-	"path/filepath" // pacote utilizado para lidar com manipulação de caminhos de arquivos e diretórios
-	"strings"       // pacote para manipular strings
+	"bufio"
+	"crypto/md5"
+	"fmt"
+	"io"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 func findDupeFiles(dirRaiz string) map[string][]string {
-	mapaComOHashDeCadaArquivo := make(map[string][]string)   // esse mapa vazio vai receber os hashes de cada arquivo lido no dir
-	mapaComOsArquivosDuplicados := make(map[string][]string) // esse mapa vazio vai listar os nomes (chaves) dos arquivos que forem encontrados em duplicidade; caso não haja nenhum(erro), retornará mensagem de erro
+	mapaComOHashDeCadaArquivo := make(map[string][]string)
+	mapaComOsArquivosDuplicados := make(map[string][]string)
 
-	erro := filepath.Walk(dirRaiz, func(path string, info fs.FileInfo, erro error) error { //path representa o caminho no sistema do dirRaiz
+	erro := filepath.Walk(dirRaiz, func(path string, info fs.FileInfo, erro error) error {
 		if erro != nil {
-			return erro //verifica se ocorreu algum erro durante o percurso do diretório. Se houver um erro, ele é retornado imediatamente,
-			//encerrando o percurso. Se não houver erro, a função continua a execução normalmente.
+			return erro
 		}
-		if !info.IsDir() { // se essa info a obtida não for (!) um dir, é um arquivo e pode ser aberto (os.Open)
-			infoDoArquivo, erro := os.Open(path) // a var infoDoArquivo armazena a info obtida ao percorrer o filepath
+		if !info.IsDir() {
+			infoDoArquivo, erro := os.Open(path)
 			if erro != nil {
 				return erro
 			}
 
 			defer infoDoArquivo.Close()
 
-			varParaArmazenarHashCriado := md5.New() //essa fução calculae armazena o hash para cada arquivo lido na var
+			varParaArmazenarHashCriado := md5.New()
 			if _, erro := io.Copy(varParaArmazenarHashCriado, infoDoArquivo); erro != nil {
 				return erro
 			}
-			hashDeCadaArquivo := fmt.Sprintf("%x", varParaArmazenarHashCriado.Sum(nil)) // imprime os hashes de cada arquivo
+			hashDeCadaArquivo := fmt.Sprintf("%x", varParaArmazenarHashCriado.Sum(nil))
 			mapaComOHashDeCadaArquivo[hashDeCadaArquivo] = append(mapaComOHashDeCadaArquivo[hashDeCadaArquivo], path)
 
 			if len(mapaComOHashDeCadaArquivo[hashDeCadaArquivo]) > 1 {
@@ -59,34 +59,50 @@ func main() {
 	}
 	dirRaiz = strings.TrimSpace(dirRaiz)
 	dirRaiz = strings.ReplaceAll(dirRaiz, "\\", "\\\\")
+
 	arquivosDuplicados := findDupeFiles(dirRaiz)
 	if len(arquivosDuplicados) == 0 {
 		fmt.Println("Não foram encontrados arquivos duplicados.")
 		return
 	}
+
+	fmt.Println("Arquivos duplicados encontrados no diretório:", dirRaiz)
 	for hash, arquivos := range arquivosDuplicados {
-		fmt.Println("Arquivos duplicados com o hash", hash+":")
-		for _, infoDoArquivo := range arquivos {
-			fmt.Println(infoDoArquivo)
+		fmt.Println("Hash:", hash)
+		for i, infoDoArquivo := range arquivos {
+			fmt.Printf("%d: %s\n", i, infoDoArquivo)
 		}
+		fmt.Println()
 	}
-	fmt.Println("Deseja excluir os arquivos duplicados? (S/N)")
-	inputConfirma := bufio.NewReader(os.Stdin)
-	respostaConfirma, _ := inputConfirma.ReadString('\n')
-	respostaConfirma = strings.TrimSpace(respostaConfirma)
-	if respostaConfirma != "s" && respostaConfirma != "S" {
+
+	fmt.Print("Digite o número do arquivo que deseja excluir (ou 's' para sair): ")
+	inputExcluir := bufio.NewReader(os.Stdin)
+	respostaExcluir, _ := inputExcluir.ReadString('\n')
+	respostaExcluir = strings.TrimSpace(respostaExcluir)
+
+	if respostaExcluir == "s" || respostaExcluir == "S" {
 		return
 	}
 
-	for _, arquivos := range arquivosDuplicados {
-		for _, infoDoArquivo := range arquivos {
-			err := os.Remove(infoDoArquivo)
-			if err != nil {
-				fmt.Println("Erro ao excluir o arquivo:", err)
-				continue
-			}
-			fmt.Println("Arquivo excluído:", infoDoArquivo)
-		}
+	numeroExcluir, erro := strconv.Atoi(respostaExcluir)
+	if erro != nil {
+		fmt.Println("Número inválido. Operação cancelada.")
+		return
 	}
 
+	excluirArquivos(arquivosDuplicados, numeroExcluir)
+}
+
+func excluirArquivos(arquivosDuplicados map[string][]string, numeroExcluir int) {
+	for _, arquivos := range arquivosDuplicados {
+		if numeroExcluir >= 0 && numeroExcluir < len(arquivos) {
+			arquivoExcluir := arquivos[numeroExcluir]
+			err := os.Remove(arquivoExcluir)
+			if err != nil {
+				fmt.Println("Erro ao excluir o arquivo:", err)
+			} else {
+				fmt.Println("Arquivo excluído:", arquivoExcluir)
+			}
+		}
+	}
 }
